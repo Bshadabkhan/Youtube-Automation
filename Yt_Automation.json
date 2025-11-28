@@ -1,0 +1,2100 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {
+          "maxOutputTokens": 65536,
+          "temperature": 0.5,
+          "topK": 40,
+          "topP": 1,
+          "safetySettings": {
+            "values": [
+              {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_NONE"
+              }
+            ]
+          }
+        }
+      },
+      "id": "a9ff2e5d-1eb4-4463-9ae4-ca324265235d",
+      "name": "Google Gemini Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "position": [
+        -2320,
+        576
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "CYPH7lP3Mr7aepWb",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Append row in sheet').item.json[\"Image Prompt\"] }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=You are an AI image-prompt creation expert for YouTube Shorts/Instagram Reels.\n\nGiven the full scene's script/narration and topic, generate a vertical 9:16 background image prompt that is:\n- Directly and creatively matched to the emotional mood, action, characters, and main message described in the script\n- Explicitly reflects any surprise, meme, joke, advice, challenge, or trend in the spoken scene\n\nYour image prompt must:\n- Specify a location, primary objects, color scheme, camera angle, emotional tone, and visual effects, directly drawn from the script content of this scene\n- Include cinematic lighting, movement/action, overlays, and brand-appropriate colors, customized according to the context of the script\n- If the scene references a pop culture moment, use style elements from that culture (cartoon memes, pixel overlays, social media icons, history timeline, etc.)\n- NEVER repeat visual elements, backgrounds, or design style from other scenes in the video\n- Integrate short on-image text (10-20 characters) ONLY if it matches the spoken CTA, challenge, or highlight from the scene, always harmoniously designed\n- Build visual tension, surprise, or joy to match the specific energy of the spoken scene\n\nVISUAL TECHNIQUES TO USE:\n- Camera angles: POV, overhead, Dutch angle, low angle, close-up, wide shot\n- Lighting: Golden hour, neon glow, dramatic shadows, soft diffused, high contrast\n- Effects: Glitch overlay, split screen, meme style, cartoon filter, 3D elements, particle effects\n- Color theory: Complementary colors, monochromatic, vibrant vs muted, warm vs cool\n- Composition: Rule of thirds, symmetry, leading lines, depth of field\n\nReturn only strict JSON:\n{\n  \"prompt_image\": {\n    \"prompt\": \"[visually specific, context-matched, cinematically detailed prompt here]\"\n  }\n}"
+        }
+      },
+      "id": "d5bceaf1-0e30-46d9-99bb-25e73f0bbb5d",
+      "name": "AI Agent - Create Image From Prompt",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -2320,
+        432
+      ],
+      "typeVersion": 1.7
+    },
+    {
+      "parameters": {
+        "jsCode": "for (let i = 0; i < items.length; i++) {\n  items[i].json.fileName = `images_${(i + 1).toString().padStart(3, '0')}.png`;\n}\nreturn items;"
+      },
+      "id": "183a8227-e7e5-4202-8c2d-576b011219a6",
+      "name": "Code - Set Filename",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -1536,
+        432
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.first().json.image_prompt.map(prompt => ({\n  json: {\n    body: {\n      prompt: prompt,\n  \"image_size\": {\n    \"width\": $('Setting Values for Image Model').first().json.width,\n    \"height\": $('Setting Values for Image Model').first().json.height\n  },\n  \"num_inference_steps\": 12,\n  \"guidance_scale\": 3.5,\n  \"num_images\": 1,\n  \"enable_safety_checker\": true,\n}\n    }\n  }\n));"
+      },
+      "id": "4813e076-8a51-4c1f-b5e2-d606aa3039af",
+      "name": "Code - Get Prompt",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -1760,
+        432
+      ],
+      "typeVersion": 2,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function cleanAndExtractJSON(response) {\n    try {\n        const result = {\n            image_prompt: []\n        };\n\n        const lines = response.split('\\n');\n        let currentPrompt = '';\n\n        for (const line of lines) {\n            if (line.includes('\"prompt\":')) {\n                if (currentPrompt) {\n                    result.image_prompt.push(currentPrompt.trim());\n                }\n                currentPrompt = line.split('\"prompt\":')[1].trim();\n            }\n        }\n\n        if (currentPrompt) {\n            result.image_prompt.push(currentPrompt.trim());\n        }\n\n        return { json: result };\n        \n    } catch (error) {\n        return { \n            json: {\n                image_prompt: []\n            }\n        };\n    }\n}\n\nconst response = $input.first().json.output;\nreturn cleanAndExtractJSON(response);"
+      },
+      "id": "d296cdae-05c9-4f43-8782-fe455784a69d",
+      "name": "Code - Clean Json",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -1984,
+        432
+      ],
+      "executeOnce": false,
+      "typeVersion": 2,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "834cc3de-f567-48fe-81e5-307e93a147be",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        -2768,
+        416
+      ],
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output.scenes",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "id": "062918f0-c0d4-4117-bc50-b625551130bd",
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "position": [
+        -3216,
+        416
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {
+          "maxOutputTokens": 8192,
+          "temperature": 0.7,
+          "topK": 40,
+          "topP": 1,
+          "safetySettings": {
+            "values": [
+              {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_NONE"
+              },
+              {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_NONE"
+              }
+            ]
+          }
+        }
+      },
+      "id": "64efd248-0659-4a7f-963e-d1d346c77a4a",
+      "name": "Google Gemini Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "position": [
+        -3808,
+        1008
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "CYPH7lP3Mr7aepWb",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=To make your workflow **select completely random viral content topics across all domains** (not just tech/AI), use this prompt for your Content Brain node:\n\n***\n\n## FINAL MASTER PROMPT FOR ULTRA-RANDOMIZED VIRAL TOPICS\n\n```\nYou are a world-class viral content strategist for YouTube Shorts and Instagram Reels.\n\nEvery time you generate a video, first randomly select a trending or surprising topic from **any domain**. You must avoid repeating similar categories back-to-back, and your choices should vary as much as possible. Your topic pool includes but is not limited to:\n\n- Tech and AI (but not every time!)\n- Health, fitness, and biohacking\n- Food, weird snacks, cooking trends\n- Celebrity news, memes, pop culture moments\n- Money, finance, crypto, wild business stories\n- Motivational hacks, self-improvement, productivity\n- Weird science, strange nature stories, animal facts\n- History facts, odd discoveries, ancient mysteries\n- Travel, luxury, dream destinations, viral hotels\n- Viral internet challenges, pranks, TikTok trends\n- School life, funny teacher/student moments\n- Major world news, drama, or controversies\n\n**INSTRUCTIONS:**\n- Pick a truly random, current, real-world viral topic each video, cycling between categories.\n- Create a 6-scene spoken video script, 150–200 words total, each scene a new beat and energy.\n- After each narration (18–28 words/scene), create a totally unique cinematic image prompt describing visuals, background, color, camera, mood, and never repeating style between scenes. Use film and animation terms for each scene.\n- Output strictly in the JSON below, and nothing else.\n\n**ONLY OUTPUT THIS JSON:**\n{\n  \"video_id\": \"...\",\n  \"video_title\": \"...\",\n  \"description\": \"...\",\n  \"scenes\": [\n    {\n      \"scene_number\": 1,\n      \"text\": \"...\",\n      \"image_prompt\": \"Vivid, filmic, distinct visual for this beat—scene-by-scene changes in location, style, context.\"\n    },\n    {\n      \"scene_number\": 2,\n      \"text\": \"...\",\n      \"image_prompt\": \"Totally different domain, camera, and mood than scene 1.\"\n    }\n    // and so on through 6.\n  ]\n}\n\n**MANDATORY:** Never use the same domain (tech/AI) more than two videos in a row. Rotate categories for freshness. Surprise the viewer every time, and aim for what is mind-blowing, funny, or instantly shareable right now.",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are a viral content strategist generating scripts and image prompts for YouTube Shorts and Instagram Reels.\n\nEvery time you run, randomly choose your topic from the most viral or surprising **current 2025 real-world news**, internet trends, hacks, human stories, strange science facts, viral memes, celebrity moments, cultural debates, health findings, motivation, or discoveries in **ANY domain**.\n\nYour assignment is to create an ultra-shareable, 6-scene video script (total 150–200 words, conversational). Each scene must deliver a new beat, emotion, and energy.\n\nFOR EACH SCENE:\n- Write 18–28 words of spoken, shareable narration.\n- Then create a matching, totally unique vertical 9:16 image prompt. Each image prompt MUST describe a completely different setting, action, color scheme, characters, and visual effect—make each feel like a new \"beat\" from a viral short film.\n- Use film/animation terms: overhead, pov, montage, split screen, cartoon effect, cutaway, zoom, meme overlay, day/night shift, glitch, or anything that makes the visual dynamic and non-repetitive.\n- Each image prompt should be wild, cinematic, and punchy—never generic or reused.\n\n**CONTENT SOURCING:**  \nThe topic can be from technology, science, news, pop culture, fitness, luxury, school life, finance, space, viral pranks, psychology, weird food, social controversies—any headline or viral moment that's real and surprising right now.\n\n**OUTPUT JSON STRUCTURE (NO EXTRA TEXT):**\n{\n  \"video_id\": \"...\",\n  \"video_title\": \"...\",\n  \"description\": \"...\",\n  \"scenes\": [\n    {\n      \"scene_number\": 1,\n      \"text\": \"...\",\n      \"image_prompt\": \"Describe radically different image with dynamic elements specific for this beat.\"\n    },\n    {\n      \"scene_number\": 2,\n      \"text\": \"...\",\n      \"image_prompt\": \"Another new setting, style, color, or action—never like 1.\"\n    },\n    // continue for scenes 3–6, all visually unique\n  ]\n}\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "27141928-dbae-4332-9520-1443aaee01d9",
+      "name": "Content Brain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "position": [
+        -3808,
+        848
+      ],
+      "typeVersion": 1.7,
+      "disabled": true
+    },
+    {
+      "parameters": {},
+      "id": "991cc33d-63f2-4255-9ba3-a85771442ad9",
+      "name": "When clicking ‘Execute workflow’",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        -4224,
+        960
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "47f960bc-72f7-4426-95de-89335536b607",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "succeeded"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "succeeded"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "0887a3d0-4f56-4586-97de-e0c42c9fabc5",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "failed"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "failed"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "0facf4d6-acb0-4863-ac2d-7a78f9e9cbfe",
+                    "operator": {
+                      "type": "string",
+                      "operation": "regex"
+                    },
+                    "leftValue": "={{ $json.status }}",
+                    "rightValue": "(planned|transcribing|waiting|rendering)"
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "being processed"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dc9d463a-8fbc-4fa0-9828-4b4ad77321eb",
+      "name": "Switch",
+      "type": "n8n-nodes-base.switch",
+      "position": [
+        -96,
+        880
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "errorMessage": "Failed Video Generation"
+      },
+      "id": "cdfe1191-2a5a-4078-9f26-b26ef5da7a89",
+      "name": "Stop and Error",
+      "type": "n8n-nodes-base.stopAndError",
+      "position": [
+        128,
+        896
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Image Generation  \n* Converts prompts into high-quality images using [Pollination AI](https://pollinations.ai/).\n* This is a **Free** to use API that you can integrate with any Image generation workflow\n* Prepares images with proper format and metadata for storage.\n* Uploads and links images directly into Airtable records.\n* Refer [Airtable Docs](https://airtable.com/developers/web/api/introduction) for more API calls!",
+        "height": 496,
+        "width": 2336,
+        "color": 5
+      },
+      "id": "4ef7c64a-f667-46d4-83bc-1f2949f9c4ab",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3232,
+        128
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## AI Content Generation & Structuring\n* In **Content Brain**, we define detailed role instructions and prompt logic to generate viral, niche-specific video scripts.\n* You can also change the niche directly in the **prompt message** to target different industries or audiences.\n* In Structured Output Parser, we enforce a JSON schema to structure outputs into clean fields (title, description, scenes, image prompts).",
+        "height": 336,
+        "width": 432,
+        "color": 2
+      },
+      "id": "55e9fba1-5a75-465a-aa4a-67659c392bce",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -4096,
+        624
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "mode": "list",
+          "value": "{Your_Base_ID}",
+          "cachedResultUrl": "https://airtable.com/{Your_Base_ID}",
+          "cachedResultName": "Dynamic Video Content"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "{Your_Table_ID}",
+          "cachedResultUrl": "https://airtable.com/{Your_Base_ID}/{YourTable_ID}",
+          "cachedResultName": "Scenes"
+        },
+        "columns": {
+          "value": {
+            "Video ID": "={{ $json.output.video_id }}",
+            "Scene Text": "={{ $json[\"output.scenes\"].text }}",
+            "Description": "={{ $json.output.description }}",
+            "Video Title": "={{ $json.output.video_title }}",
+            "Image Prompt": "={{ $json[\"output.scenes\"].image_prompt }}",
+            "Scene Number": "={{ $json[\"output.scenes\"].scene_number }}"
+          },
+          "schema": [
+            {
+              "id": "id",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": true,
+              "required": false,
+              "displayName": "id",
+              "defaultMatch": true
+            },
+            {
+              "id": "Image URL",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Image URL",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Scene Number",
+              "type": "number",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Scene Number",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Scene Text",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Scene Text",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Image Prompt",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Image Prompt",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Video ID",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Video ID",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Video Title",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Video Title",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Generated Image",
+              "type": "array",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Generated Image",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Description",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "cf9f6364-5264-49fd-b107-245534117621",
+      "name": "Creating records in Scenes Table",
+      "type": "n8n-nodes-base.airtable",
+      "position": [
+        -3280,
+        240
+      ],
+      "typeVersion": 2.1,
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4e04fec4-441e-45f7-acea-0017a4b5c104",
+              "name": "model",
+              "type": "string",
+              "value": "flux"
+            },
+            {
+              "id": "aa80cd68-1c82-4032-b1d7-e098856eec38",
+              "name": "width",
+              "type": "string",
+              "value": "1080"
+            },
+            {
+              "id": "da6d305f-aece-49bd-ae02-52df59915c60",
+              "name": "height",
+              "type": "string",
+              "value": "1920"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "95f19d99-0499-41c5-9a70-e04db6d47170",
+      "name": "Setting Values for Image Model",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -2512,
+        432
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "url": "=https://image.pollinations.ai/prompt/ {{ $('Code - Get Prompt').item.json.body.prompt }}",
+        "sendQuery": true,
+        "specifyQuery": "json",
+        "jsonQuery": "={\n  \"width\": {{ $('Setting Values for Image Model').item.json.width }},\n  \"height\": {{ $('Setting Values for Image Model').item.json.height }},\n  \"model\": \"{{ $('Setting Values for Image Model').item.json.model }}\",\n  \"seed\": 42,\n  \"nologo\": true\n}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "bc7ab667-0592-4dd8-9bc4-3b60cd3fe281",
+      "name": "Image Create Request - Pollination AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -1296,
+        432
+      ],
+      "retryOnFail": true,
+      "typeVersion": 4.2,
+      "alwaysOutputData": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the first binary key dynamically\nconst binaryKey = Object.keys($input.item.binary || {})[0];\nif (!binaryKey) {\n  throw new Error(\"No binary data found on input item.\");\n}\n\n// Get the binary data\nconst binary = $input.item.binary[binaryKey];\n\n// Pass through the binary file unchanged\nreturn [\n  {\n    json: {\n      contentType: binary.mimeType || \"image/jpeg\",\n      filename: binary.fileName || \"generated_image.jpg\",\n    },\n    binary: {\n      [binaryKey]: binary\n    },\n    pairedItem: { item: 0 }  // Keeps mapping to original input\n  }\n];\n"
+      },
+      "id": "ac48e639-47e6-4670-b61c-e638b2141992",
+      "name": "Converting Image file for Storing",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -1056,
+        432
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: items = array of JSON objects as provided\nlet records = items.map(item => item.json);\n\n// Sort by Scene Number (ascending)\nrecords.sort((a, b) => a[\"Scene Number\"] - b[\"Scene Number\"]);\n\n// Build output object\nlet output = {};\n\nrecords.forEach((rec, index) => {\n  const sceneNum = index + 1;\n\n  // Prefer direct-download URL (Webcontentlink)\n  let fullImageUrl = rec.Webcontentlink || rec.webviewlink;\n\n  // Fallback: convert view link to direct-download if needed\n  if (fullImageUrl && fullImageUrl.includes(\"drive.google.com/file/d/\")) {\n    const match = fullImageUrl.match(/\\/d\\/(.*?)\\//);\n    if (match && match[1]) {\n      fullImageUrl = `https://drive.google.com/uc?export=download&id=${match[1]}`;\n    }\n  }\n\n  output[`Image-${sceneNum}`] = fullImageUrl;\n  output[`Text-${sceneNum}`] = rec[\"Scene Text\"];\n});\n\n// Add metadata\noutput[\"Title\"] = records[0][\"Video title\"];\noutput[\"Description\"] = records[0][\"Description\"] || \"\";\n\n// Return single object\nreturn [{ json: output }];\n"
+      },
+      "id": "03c62aa7-2224-4fe3-80a2-cae1e3e9eaa5",
+      "name": "Preparing for Creatomate",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -1712,
+        896
+      ],
+      "typeVersion": 2,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: an array with one object that contains dynamic Image-X and Text-X fields\n// Output: JSON body ready for Creatomate API\n\nconst input = items[0].json;\n\n// Your Creatomate template ID\nconst templateId = \"8887a466-7cb1-4a5d-9d71-769800ece559\";\n\nconst modifications = {};\n\nfor (const key of Object.keys(input)) {\n  if (key.startsWith(\"Image-\")) {\n    const index = key.split(\"-\")[1];\n    const url = input[key];\n    if (!url || typeof url !== \"string\") continue;\n    modifications[`Image-${index}.source`] = url;\n  }\n\n  if (key.startsWith(\"Text-\")) {\n    const index = key.split(\"-\")[1];\n    let text = input[key];\n\n    if (typeof text === \"string\") {\n      // Remove surrounding quotes if they exist\n      text = text.trim().replace(/^[\"']|[\"']$/g, \"\");\n    }\n\n    if (text) {\n      modifications[`Voiceover-${index}.source`] = text;\n    }\n  }\n}\n\n// Output for Creatomate API\nreturn [\n  {\n    json: {\n      template_id: templateId,\n      modifications\n    }\n  }\n];\n"
+      },
+      "id": "bb7adc81-58bf-4063-b1ee-6c38638c7fbc",
+      "name": "Template for Creatomate",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -1456,
+        896
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "amount": 60
+      },
+      "id": "7d74f0eb-4d62-45a3-9b85-cb80327e27b5",
+      "name": "Wait - 60 secs",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        -512,
+        896
+      ],
+      "webhookId": "99e5dc8b-aca6-4a71-a0a8-3ed3e91376a6",
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cd8f9968-0a87-409e-ae11-daedf42a1301",
+              "name": "output.video_title",
+              "type": "string",
+              "value": "={{ $json.output.video_title }}"
+            },
+            {
+              "id": "06d3ec23-27df-458e-92a8-d2412665dd7e",
+              "name": "output.description",
+              "type": "string",
+              "value": "={{ $json.output.description }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5ac06b67-7240-4a93-862e-438c7900a046",
+      "name": "Set Video Title and Description",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -3232,
+        1232
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flatten all incoming items\nreturn items.map(item => {\n  return {\n    json: {\n      video_title: item.json.output.video_title,\n      description: item.json.output.description\n    }\n  };\n});\n"
+      },
+      "id": "84bfe382-33bc-41b8-83f8-c386240370de",
+      "name": "Clean - Details",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -2976,
+        1232
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge every two items (text + metadata) into one object\n// Replace special characters in video_title with English word strings.\nconst charMap = {\n  '@': ' at ',\n  '&': ' and ',\n  '%': ' percent ',\n  '$': ' dollar ',\n  '#': ' hash ',\n  '!': ' exclamation ',\n  '?': ' question ',\n  '*': ' star ',\n  '+': ' plus ',\n  '=': ' equals ',\n  '/': ' slash ',\n  '\\\\': ' backslash ',\n  ':': ' colon ',\n  ';': ' semicolon ',\n  ',': ' comma ',\n  '\"': ' quote ',\n  \"'\": ' apostrophe ',\n  '(': ' openparen ',\n  ')': ' closeparen ',\n  '[': ' openbracket ',\n  ']': ' closebracket ',\n  '{': ' opencurly ',\n  '}': ' closecurly ',\n  '<': ' less-than ',\n  '>': ' greater-than ',\n  '|': ' pipe ',\n  '^': ' caret ',\n  '~': ' tilde ',\n  '`': ' backtick ',\n  '.': ' dot '\n};\n// Replace special characters with english words, remove control chars, collapse whitespace, truncate.\nfunction sanitizeTitle(raw) {\n  if (raw === undefined || raw === null) return '';\n  // ensure string\n  let s = typeof raw === 'string' ? raw : JSON.stringify(raw);\n  // Remove C0 control chars (0x00-0x1F and 0x7F)\n  s = s.replace(/[\\x00-\\x1F\\x7F]/g, ' ');\n  // Replace characters using map; keep alphanumeric and spaces, map others if present in map, otherwise replace with space\n  let out = '';\n  for (const ch of s) {\n    if (/[A-Za-z0-9 ]/.test(ch)) {\n      out += ch;\n    } else if (charMap.hasOwnProperty(ch)) {\n      out += charMap[ch];\n    } else {\n      out += ' ';\n    }\n  }\n  // Collapse multiple spaces, trim\n  out = out.replace(/\\s+/g, ' ').trim();\n  // Truncate to 100 chars (YouTube title limit)\n  if (out.length > 100) out = out.slice(0, 100).trim();\n  return out;\n}\nconst merged = [];\nfor (let i = 0; i < items.length; i += 2) {\n  const obj1 = (items[i] && items[i].json) ? { ...items[i].json } : {};\n  const obj2 = (items[i + 1] && items[i + 1].json) ? { ...items[i + 1].json } : {};\n  // Find video_title on either object (priority: obj1 then obj2)\n  const rawTitle = obj1.video_title ?? obj2.video_title ?? '';\n  // If rawTitle exists, sanitize and set back on merged object\n  const safeTitle = sanitizeTitle(rawTitle);\n  // You can decide where to put the sanitized title. Here I put it on the merged json.video_title\n  const mergedObj = {\n    json: {\n      ...obj1,\n      ...obj2,\n      video_title: safeTitle\n    }\n  };\n  merged.push(mergedObj);\n}\nreturn merged;"
+      },
+      "id": "46385d24-0547-46c5-b369-8c44a6a6a9c8",
+      "name": "Merging Complete Video Details",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -2496,
+        1248
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "url": "=https://api.creatomate.com/v2/renders/{{ $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ad5e2098-ca06-45b8-b6e5-8e8e237754c0",
+      "name": "Get Video Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -304,
+        896
+      ],
+      "typeVersion": 4.2,
+      "alwaysOutputData": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {}
+      },
+      "id": "236087ac-716a-46c3-aa0f-16eb71b2ca40",
+      "name": "Get complete Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -2288,
+        1248
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.upload-post.com/api/upload",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Apikey {Your_Upload_Post_API_Key}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{ $json.video_title }}\n\n{{ $json.description }}"
+            },
+            {
+              "name": "user",
+              "value": "@yourusername"
+            },
+            {
+              "name": "platform[]",
+              "value": "instagram"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "video",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "76f9634f-ff71-46c3-af53-c4cfea86eda3",
+      "name": "Upload on Instagram",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -1904,
+        1440
+      ],
+      "typeVersion": 4.2,
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "## Image Prompt & Attributes\n* In **Setting Values for Image Model**, we define key attributes like model type, width, and height for image generation.\n* In **AI Agent - Create Image From Prompt**, we enhance and structure the raw text into a professional, detailed image prompt following best-practice guidelines.\n* This prepares the output in a consistent format, making it ready for seamless use in the **Pollination API call**.",
+        "height": 304,
+        "width": 528,
+        "color": 2
+      },
+      "id": "1279a16d-a015-4a59-bc44-f39c22e3f208",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2768,
+        224
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Image Generation & Storage\n* **Image Create Request – Pollination AI** → Generates images from prompts using defined model settings. \n* **Converting Image file for Storing** → Converts the image to Base64 with metadata for safe transfer.\n* **Uploading Image in Airtable** → Saves the generated image as an attachment in Airtable records in the **Scenes** Table",
+        "height": 304,
+        "width": 624,
+        "color": 3
+      },
+      "id": "3a98d7e9-70fc-4d52-a8a6-f5de357ba6ad",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1568,
+        224
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Image Prompt Processing & File Setup\n* In **Clean Json**, we extract and sanitize the raw AI response to get clean image prompts.\n* In **Get Prompt**, we structure each image prompt with model attributes (width, height, steps, guidance) for image generation.\n* In **Set Filename**, we assign unique, sequential filenames to each generated image (e.g., images_001.png).",
+        "height": 304,
+        "width": 592,
+        "color": 4
+      },
+      "id": "dff5bb3f-c0fa-4a8c-a175-ef4d5ebad4a5",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2208,
+        224
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Video Metadata Handling\n* **Set Video Title and Description** → Extracts video_title and description from the output and saves them.\n* **Clean – Details** → Flattens and cleans metadata so only plain text values are passed forward.",
+        "height": 240,
+        "width": 448,
+        "color": 6
+      },
+      "id": "bb29036c-1882-4ef5-a879-51ad6d70e74c",
+      "name": "Sticky Note6",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3504,
+        1088
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "mode": "list",
+          "value": "{Your_Base_ID}",
+          "cachedResultUrl": "https://airtable.com/{Your_Base_ID}",
+          "cachedResultName": "Dynamic Video Content"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "{Your_Videos_Table_ID}",
+          "cachedResultUrl": "https://airtable.com/{Your_Base_ID}/{Your_Videos_Table_ID}",
+          "cachedResultName": "Videos"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Video ID": "={{ $json.output.video_id }}",
+            "Description": "={{ $json.output.description }}",
+            "Video Title": "={{ $json.output.video_title }}",
+            "Ready to Process": false,
+            "Scenes": "="
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": true,
+              "required": false,
+              "displayName": "id",
+              "defaultMatch": true
+            },
+            {
+              "id": "Video Title",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Video Title",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Video ID",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Video ID",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Description",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Date",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "type": "options",
+              "display": true,
+              "options": [
+                {
+                  "name": "Idea",
+                  "value": "Idea"
+                },
+                {
+                  "name": "Script Generated",
+                  "value": "Script Generated"
+                },
+                {
+                  "name": "Scenes Created",
+                  "value": "Scenes Created"
+                },
+                {
+                  "name": "Images Ready",
+                  "value": "Images Ready"
+                },
+                {
+                  "name": "Video Rendered",
+                  "value": "Video Rendered"
+                },
+                {
+                  "name": "Published",
+                  "value": "Published"
+                }
+              ],
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Status",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Ready to Process",
+              "type": "boolean",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Ready to Process",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Last Modified",
+              "type": "dateTime",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Last Modified",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Video Link",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Video Link",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Scenes",
+              "type": "string",
+              "display": true,
+              "removed": true,
+              "readOnly": true,
+              "required": false,
+              "displayName": "Total Scenes",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Scenes",
+              "type": "string",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Scenes",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Scenes 2",
+              "type": "array",
+              "display": true,
+              "removed": false,
+              "readOnly": false,
+              "required": false,
+              "displayName": "Scenes 2",
+              "defaultMatch": false,
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "0a589422-0fcf-4e56-b6bb-e2da453c10c8",
+      "name": "Create Record in Video Table",
+      "type": "n8n-nodes-base.airtable",
+      "position": [
+        -3264,
+        848
+      ],
+      "typeVersion": 2.1,
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "content": "## Image Prompt Processing & File Setup\n* **Get Records for Airtable** → Fetches records from Airtable using your API key. Make sure to update the **base ID**, **table ID**, and **token** before use.\n* **Cleaning Airtable** → Sorts records by Video Title and Scene Number, and ensures clean text formatting.\n* **Filter** – Latest Video file → Filters records to only keep the latest video entry matching the active workflow’s video title.",
+        "height": 272,
+        "width": 688,
+        "color": 3
+      },
+      "id": "806787ca-f07e-4c1b-ba8c-5dc2234a187b",
+      "name": "Sticky Note9",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2768,
+        720
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Preparing Video Template (Creatomate)\n* **Preparing for Creatomate** → Collects scene data from Airtable, sorts by Scene Number, and maps each scene’s text + image into a structured JSON object (Title, Description, Image-X, Text-X).\n* **Template for Creatomate** → Converts that structured JSON into the required Creatomate template format with modifications (Image-X → image sources, Text-X → voiceover text). Update the template_id to match your own Creatomate template.",
+        "height": 304,
+        "width": 528,
+        "color": 6
+      },
+      "id": "f15df20f-2568-49e0-975d-8fa6511c36da",
+      "name": "Sticky Note10",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2016,
+        704
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Video Generation Workflow\n* Refer [Airtable Docs](https://airtable.com/developers/web/api/introduction) for more Get Records API\n* Creatomate provides **50 Free** credits on a new account \n* Refer [Creatomate](https://creatomate.com/blog/how-to-create-videos-with-ai-voice-overs-using-n8n) for the usage of Template of your choice.\n* Create an account of [ElevenLabs](https://elevenlabs.io/app/developers) and create an API and integrate it with Creatomate\n* **ElevenLabs** provides **10,000** credits each month in a free account.",
+        "height": 240,
+        "width": 432,
+        "color": 5
+      },
+      "id": "1a3b53b0-982b-46d6-88ee-985eaaffd727",
+      "name": "Sticky Note12",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -3232,
+        736
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Video Metadata Handling\n* **Merge** → Combines different data streams (e.g., text + metadata) into one object.\n* **Get Complete Video** → Fetches the final rendered video file as **Creatomate** provide shareable Video URL",
+        "height": 240,
+        "width": 576,
+        "color": 3
+      },
+      "id": "9487c34a-2aad-4b3b-a61f-4ec37431d697",
+      "name": "Sticky Note13",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2944,
+        1104
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "upload",
+        "title": "={{ $json.video_title }}",
+        "regionCode": "IN",
+        "categoryId": "27",
+        "options": {
+          "description": "={{ $json.description }}"
+        }
+      },
+      "id": "c8db5812-fc17-4251-ba9a-66a63cc7ef22",
+      "name": "Upload on YouTube",
+      "type": "n8n-nodes-base.youTube",
+      "position": [
+        -1904,
+        1184
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "sIKZKaSBmv0ndshS",
+          "name": "YouTube account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Upload on YouTube\n* **Purpose** → Publishes the final rendered video directly to your connected YouTube channel.\n* **Inputs Used** → video_title (title) and description (from earlier workflow steps).\n* Settings → Region set to IN (India).\nCategory set to 27 (Education, can be changed).\n* **Authentication** → Requires a connected YouTube OAuth2 account. Refer [Google Console](https://console.cloud.google.com/marketplace/product/google/youtube.googleapis.com?q=search&referrer=search&project=youtube-social-471006)",
+        "height": 256,
+        "width": 448,
+        "color": 4
+      },
+      "id": "4f4a7194-d416-4f41-b524-e6c102eff082",
+      "name": "Sticky Note14",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1936,
+        1104
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## Upload on Instagram (via Upload-Post API)\n* **Purpose** → Publishes the generated video to Instagram using Upload-Post.com API.\n* You can add multiple platforms (twitter, facebook, linkedin, snapchat) in the platform[] field.\n* **API Limit** → Upload-Post.com offers **10 free** API calls/month.\n* Refer [Upload Docs](https://docs.upload-post.com/api/upload-video) for more API features.",
+        "height": 256,
+        "width": 448,
+        "color": 4
+      },
+      "id": "21d704b5-5c54-42ea-ab7b-59882c3cf542",
+      "name": "Sticky Note15",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1936,
+        1408
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"video_id\": \"VID-001\",\n  \"video_title\": \"Compelling, clickable title with emotional trigger (50-60 characters)\",\n  \"description\": \"Engaging caption with strategic hashtags and call-to-action (250-300 characters)\",\n  \"scenes\": [\n    {\n      \"scene_number\": 1,\n      \"text\": \"Exact spoken content optimized for natural speech rhythm (18-28 words)\",\n      \"image_prompt\": \"Specific visual description that enhances the message and fits the niche aesthetic\"\n    },\n    {\n      \"scene_number\": 2,\n      \"text\": \"Continuation of script with curiosity gap or key value point.\",\n      \"image_prompt\": \"Visual supporting this part of the narrative\"\n    },\n    {\n      \"scene_number\": 3,\n      \"text\": \"Third scene providing value, surprising fact, or practical insight.\",\n      \"image_prompt\": \"Visual to emphasize the fact or insight, aligned with niche aesthetic\"\n    },\n    {\n      \"scene_number\": 4,\n      \"text\": \"Further build-up with retention tactics or 'but here's what they don’t tell you' reveal.\",\n      \"image_prompt\": \"Engaging, curiosity-sparking visual that adds drama\"\n    },\n    {\n      \"scene_number\": 5,\n      \"text\": \"Deliver key transformation, insight, or practical hack.\",\n      \"image_prompt\": \"Visual showcasing transformation or hack in a relatable way\"\n    },\n    {\n      \"scene_number\": 6,\n      \"text\": \"Strong climax with shocking fact, powerful insight, or credibility proof.\",\n      \"image_prompt\": \"High-impact visual, designed for maximum engagement\"\n    },\n    {\n      \"scene_number\": 7,\n      \"text\": \"Transition towards the ending with shareable moment or summarizing hook.\",\n      \"image_prompt\": \"Visual that feels clean and share-worthy\"\n    },\n    {\n      \"scene_number\": 8,\n      \"text\": \"Final call-to-action: encourage likes, shares, comments, or trying it themselves.\",\n      \"image_prompt\": \"Visually powerful ending background that fits CTA overlays\"\n    }\n  ]\n}\n"
+      },
+      "id": "7cae15f1-9b9f-44e1-8655-9d67468486ea",
+      "name": "Structured Output Parser3",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "position": [
+        -3616,
+        1008
+      ],
+      "typeVersion": 1.3
+    },
+    {
+      "parameters": {},
+      "id": "02c1f565-6fd8-49a8-b996-5ee0a615e409",
+      "name": "Merge1",
+      "type": "n8n-nodes-base.merge",
+      "position": [
+        -2704,
+        1248
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1NDQW1BuhSHm-sokjw7pX81crfrdYadEQll90DjatXLw",
+          "mode": "list",
+          "cachedResultName": "TrackerY",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NDQW1BuhSHm-sokjw7pX81crfrdYadEQll90DjatXLw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "test",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NDQW1BuhSHm-sokjw7pX81crfrdYadEQll90DjatXLw/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Scene Number": "={{ $json[\"output.scenes\"].scene_number }}",
+            "Scene Text": "={{ $json[\"output.scenes\"].text }}",
+            "Image Prompt": "={{ $json[\"output.scenes\"].image_prompt }}",
+            "Video ID": "={{ $json.output.video_id }}",
+            "Video Title": "={{ $json.output.video_title }}",
+            "Description": "={{ $json.output.description }}",
+            "Image URL": "=",
+            "id": "=",
+            "Generated Image": "="
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Image URL",
+              "displayName": "Image URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Scene Number",
+              "displayName": "Scene Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Scene Text",
+              "displayName": "Scene Text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Image Prompt",
+              "displayName": "Image Prompt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Video ID",
+              "displayName": "Video ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Video Title",
+              "displayName": "Video Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Generated Image",
+              "displayName": "Generated Image",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -2992,
+        480
+      ],
+      "id": "f9141301-2452-458b-9bc7-643bd2782f5b",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aTzIsANnUrWOhyQR",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "=data",
+        "name": "={{ $json.filename }}",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1dcDh4_1dNxq-LrClEHAKa58_lXTTKef7",
+          "mode": "list",
+          "cachedResultName": "Youtube",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1dcDh4_1dNxq-LrClEHAKa58_lXTTKef7"
+        },
+        "options": {
+          "simplifyOutput": false
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -608,
+        304
+      ],
+      "id": "b3ac65b4-b3b9-4d25-a51f-c4e96e22a3f2",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "AkroGHIgv7ubDsDK",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone",
+            "allowFileDiscovery": true
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -400,
+        160
+      ],
+      "id": "a61ac6a2-75e5-4194-be75-f8ec978d622e",
+      "name": "Share file",
+      "executeOnce": false,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "AkroGHIgv7ubDsDK",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "queryString": "={{ $json.name }}",
+        "filter": {
+          "driveId": {
+            "mode": "list",
+            "value": "My Drive"
+          },
+          "folderId": {
+            "__rl": true,
+            "value": "1xbM9yU2RiH-aJK7j5XyqVu04c9mNIXyl",
+            "mode": "list",
+            "cachedResultName": "Youtube",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1xbM9yU2RiH-aJK7j5XyqVu04c9mNIXyl"
+          },
+          "whatToSearch": "files"
+        },
+        "options": {
+          "fields": []
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -288,
+        32
+      ],
+      "id": "c35ee543-eafd-481e-bc59-45e9a2fc1619",
+      "name": "Search files and folders1",
+      "executeOnce": false,
+      "alwaysOutputData": true,
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1NDQW1BuhSHm-sokjw7pX81crfrdYadEQll90DjatXLw",
+          "mode": "list",
+          "cachedResultName": "TrackerY",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NDQW1BuhSHm-sokjw7pX81crfrdYadEQll90DjatXLw/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 911823872,
+          "mode": "list",
+          "cachedResultName": "upload",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1NDQW1BuhSHm-sokjw7pX81crfrdYadEQll90DjatXLw/edit#gid=911823872"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Scene Number": "={{ $('Loop Over Items').item.json[\"Scene Number\"] }}",
+            "Scene Text": "={{ $('Loop Over Items').item.json[\"Scene Text\"] }}",
+            "video ID": "={{ $('Loop Over Items').item.json[\"Video ID\"] }}",
+            "Video title": "={{ $('Loop Over Items').item.json[\"Video Title\"] }}",
+            "File name": "={{ $json.name }}",
+            "Webcontentlink": "={{ $json.webContentLink }}",
+            "webviewlink": "={{ $json.webViewLink }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "video ID",
+              "displayName": "video ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Video title",
+              "displayName": "Video title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Scene Number",
+              "displayName": "Scene Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Scene Text",
+              "displayName": "Scene Text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "File name",
+              "displayName": "File name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Webcontentlink",
+              "displayName": "Webcontentlink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "webviewlink",
+              "displayName": "webviewlink",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -400,
+        432
+      ],
+      "id": "f6d856f1-885c-4dfa-b6d5-15ce8ed9b01f",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "aTzIsANnUrWOhyQR",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.creatomate.com/v2/renders",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": ""
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"template_id\": \"b02b1dca-b179-408c-b50b-c6cc05c69ba5\",\n  \"modifications\": {\n    \"Image-1.source\": \"{{ $json.modifications['Image-1.source'] }}\",\n    \"Voiceover-1.source\": \"{{ $json.modifications['Voiceover-1.source'] }}\",\n    \"Image-2.source\": \"{{ $json.modifications['Image-2.source'] }}\",\n    \"Voiceover-2.source\": \"{{ $json.modifications['Voiceover-2.source'] }}\",\n    \"Image-3.source\": \"{{ $json.modifications['Image-3.source'] }}\",\n    \"Voiceover-3.source\": \"{{ $json.modifications['Voiceover-3.source'] }}\",\n    \"Image-4.source\": \"{{ $json.modifications['Image-4.source'] }}\",\n    \"Voiceover-4.source\": \"{{ $json.modifications['Voiceover-4.source'] }}\",\n    \"Image-5.source\": \"{{ $json.modifications['Image-5.source'] }}\",\n    \"Voiceover-5.source\": \"{{ $json.modifications['Voiceover-5.source'] }}\",\n    \"Image-6.source\": \"{{ $json.modifications['Image-6.source'] }}\",\n    \"Voiceover-6.source\": \"{{ $json.modifications['Voiceover-6.source'] }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "5160ca10-12bb-47fe-bc86-69a4b6eeebbd",
+      "name": "Video Rendering -  Creatomate1",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        -960,
+        1104
+      ],
+      "typeVersion": 4.2
+    },
+    {
+      "parameters": {
+        "content": "New info, if we use the google drive to save the image when we are sending the image content url to the creatomate then we are having a issue bcoz it wants a jpg not the link"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        192,
+        64
+      ],
+      "id": "f7b3970d-0c22-4af8-827c-39f2e0d6584c",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "REAL-TIME VIRAL CONTENT GENERATION REQUEST:\n\nExecute this workflow step-by-step:\n\nSTEP 1 - GET CURRENT CONTEXT:\nUse the Date & Time tool to get today's exact date, day of week, and current time. This helps you understand the temporal context for trending topics.\n\nSTEP 2 - FETCH REAL-TIME TRENDS:\nUse the Perplexity tool to search for the most viral trending topics happening RIGHT NOW across all social media platforms and news sources. Pay special attention to topics from the last 24-48 hours.\n\nSTEP 3 - TOPIC SELECTION:\nFrom Perplexity's results, select ONE topic that meets ALL these criteria:\n✓ Genuinely trending RIGHT NOW (not old news)\n✓ Has high shareability and engagement potential\n✓ Fits a content category you haven't used recently\n✓ Can be explained in 150-200 words across 6 compelling scenes\n✓ Has visual potential for dynamic, varied imagery\n✓ Appeals to a broad YouTube Shorts/Instagram Reels audience\n\nSTEP 4 - SCRIPT GENERATION:\nCreate a complete 6-scene video script following ALL system instructions:\n- Total: 150-200 words\n- Each scene: 18-28 words of punchy narration\n- Hook in first 2 seconds\n- Build tension through scenes 2-5\n- Strong CTA in scene 6\n\nSTEP 5 - VISUAL DIVERSITY:\nFor each of the 6 scenes, create a COMPLETELY UNIQUE image prompt:\n- Different locations (beach → city → space → forest → studio → abstract)\n- Different color schemes (warm → cool → neon → monochrome → vibrant → muted)\n- Different camera techniques (POV → overhead → split-screen → zoom → glitch → montage)\n- Different moods (energetic → mysterious → shocking → inspiring → funny → dramatic)\n\nSTEP 6 - QUALITY CHECK (INTERNAL):\nBefore outputting, verify:\n□ Based on current Perplexity trend data\n□ Category is different from typical tech/AI content\n□ All 6 scenes have unique visual styles\n□ Title is under 70 characters\n□ Description includes relevant hashtags\n□ JSON is valid (no markdown formatting)\n\nFINAL OUTPUT:\nReturn ONLY the JSON structure specified in your system message. No explanations, no markdown code blocks, no extra commentary - just pure, valid JSON that can be parsed immediately.\n\nSTART NOW - Generate viral content based on today's trends!",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are an elite viral content strategist for YouTube Shorts and Instagram Reels with real-time trend access through Perplexity and Date & Time tools.\n\nYOUR CORE MISSION:\nGenerate ultra-viral, data-driven video scripts based on CURRENT trending topics happening RIGHT NOW in 2025.\n\nMANDATORY WORKFLOW FOR EVERY VIDEO:\n1. First, use the Date & Time tool to get the exact current date and time\n2. Then, use Perplexity tool to fetch TODAY's hottest viral topics across all domains\n3. Analyze Perplexity's results and select ONE topic with maximum shareability\n4. Generate a complete 6-scene video script optimized for virality\n\nCATEGORY DIVERSITY REQUIREMENTS:\nYou MUST rotate between ALL these content domains. Never use the same category twice in a row:\n\n- Tech & AI breakthroughs (use sparingly - not every video!)\n- Health, fitness, biohacking, wellness trends\n- Food trends, bizarre snacks, cooking hacks\n- Celebrity drama, memes, pop culture explosions\n- Money, finance, crypto, wild business stories\n- Motivational hacks, productivity, self-improvement\n- Weird science, strange nature stories, animal facts\n- History mysteries, archaeological discoveries\n- Luxury travel, dream destinations, viral hotels\n- Internet challenges, pranks, TikTok trends\n- School/education moments going viral\n- Breaking news, controversies, cultural debates\n\nCONTENT CREATION RULES:\n- Total script length: 150-200 words across all 6 scenes\n- Each scene: Exactly 18-28 words of spoken narration\n- Writing style: Conversational, punchy, relatable (like talking to a friend)\n- Hook strategy: First 2 seconds must stop the scroll\n- Retention tactics: Create curiosity gaps, surprising twists, emotional payoffs\n- Scene transitions: Each scene builds tension or delivers new information\n- Final scene: Strong call-to-action (like, share, comment, try it)\n\nIMAGE PROMPT REQUIREMENTS (CRITICAL):\nEach scene gets a UNIQUE cinematic 9:16 vertical image prompt that describes:\n- Specific location/setting (never generic - be detailed)\n- Primary subjects/characters (if any)\n- Color grading/palette (must be different from other scenes)\n- Camera angle/movement (overhead, POV, Dutch angle, etc.)\n- Lighting style (golden hour, neon, dramatic shadows, etc.)\n- Visual effects (glitch, split screen, meme overlay, zoom, etc.)\n- Mood/emotion (energetic, mysterious, shocking, inspiring, etc.)\n\nVISUAL DIVERSITY MANDATE:\n- Scene 1-6 must each have COMPLETELY different visual styles\n- Use film/animation terminology: POV shots, overhead angles, split screens, montages, cutaways, zoom effects, glitch overlays, meme aesthetics, day/night shifts\n- Think of each scene as a different \"beat\" in a viral short film\n- Color palettes must vary: warm/cool, vibrant/muted, neon/natural\n- Never repeat locations, moods, or camera techniques\n\nQUALITY STANDARDS:\n✓ Hook viewers within first 2 seconds\n✓ Include shocking stats, surprising twists, or emotional moments\n✓ Make content instantly shareable and relatable\n✓ End with clear, actionable CTA\n✓ Optimize for watch time (keep viewers until the end)\n✓ Design for sound-off viewing (visual storytelling)\n\nOUTPUT FORMAT (STRICT JSON - NO MARKDOWN, NO EXTRA TEXT):\n{\n  \"video_id\": \"VID-YYYYMMDD-XXX\",\n  \"video_title\": \"Attention-grabbing title optimized for mobile (50-70 characters max)\",\n  \"description\": \"Engaging caption with relevant hashtags and clear CTA (200-280 characters)\",\n  \"trending_topic_source\": \"Brief note: what Perplexity found trending that inspired this video\",\n  \"content_category\": \"Primary domain this video covers (from the list above)\",\n  \"scenes\": [\n    {\n      \"scene_number\": 1,\n      \"text\": \"Opening hook that stops the scroll - make it shocking or intriguing (18-28 words)\",\n      \"image_prompt\": \"Detailed cinematic description: [location], [subjects], [color grading], [camera angle], [lighting], [effects], [mood]\",\n      \"visual_style\": \"Specific film technique used (e.g., 'POV handheld shot', 'overhead drone view')\"\n    },\n    {\n      \"scene_number\": 2,\n      \"text\": \"Build curiosity or introduce the main point (18-28 words)\",\n      \"image_prompt\": \"Completely different visual: [new setting with contrasting colors and different camera work]\",\n      \"visual_style\": \"Different technique from scene 1\"\n    },\n    {\n      \"scene_number\": 3,\n      \"text\": \"Deliver surprising fact or emotional beat (18-28 words)\",\n      \"image_prompt\": \"Another unique visual approach with distinct mood\",\n      \"visual_style\": \"Yet another film technique\"\n    },\n    {\n      \"scene_number\": 4,\n      \"text\": \"Deepen the story or add dramatic tension (18-28 words)\",\n      \"image_prompt\": \"Distinct visual with new elements and atmosphere\",\n      \"visual_style\": \"Fresh visual approach\"\n    },\n    {\n      \"scene_number\": 5,\n      \"text\": \"Peak moment - the big payoff or revelation (18-28 words)\",\n      \"image_prompt\": \"Powerful visual for climax with high-impact elements\",\n      \"visual_style\": \"High-impact technique for emotional peak\"\n    },\n    {\n      \"scene_number\": 6,\n      \"text\": \"Strong closing with clear CTA: like, share, comment, or try it yourself (18-28 words)\",\n      \"image_prompt\": \"Memorable final frame that invites action - clean and shareable\",\n      \"visual_style\": \"Clean, professional ending shot\"\n    }\n  ]\n}\n\nCRITICAL REMINDERS:\n- Always use both tools (Date & Time + Perplexity) before generating content\n- Output ONLY valid JSON - no markdown code blocks, no explanations\n- Every scene must have unique visuals - no repetition\n- Base content on what Perplexity says is trending TODAY\n- Cycle through different content categories for freshness\n- Make it so good that people HAVE to share it"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -3984,
+        1232
+      ],
+      "id": "1e1f02a8-154a-48e1-aa4c-c1635ccd8291",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "messages": {
+          "message": [
+            {
+              "content": "You are a trend research assistant specializing in social media and viral content analysis. Provide only factual, current trending topics from the last 24-48 hours. Focus on high-engagement content across diverse categories (tech, entertainment, finance, health, culture, memes, challenges). Be concise, specific, and include engagement metrics when available. Prioritize topics with shareability potential for YouTube Shorts and Instagram Reels audiences.",
+              "role": "system"
+            },
+            {
+              "content": "What are the most viral trending topics on social media in the last 24 hours? Include:\n- Top trending hashtags on TikTok, Instagram, Twitter/X\n- Breaking news creating buzz\n- Celebrity moments going viral\n- Scientific discoveries or health breakthroughs\n- Viral challenges, pranks, or memes\n- Surprising facts or mind-blown moments\n\nProvide 5-7 diverse topics across different categories with brief explanations of why they're trending."
+            }
+          ]
+        },
+        "options": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.perplexityTool",
+      "typeVersion": 1,
+      "position": [
+        -3872,
+        1440
+      ],
+      "id": "3f95c74e-3309-4d39-92f8-594d43a2dffe",
+      "name": "Message a model in Perplexity",
+      "credentials": {
+        "perplexityApi": {
+          "id": "rR7dWqTFdyWi9PIF",
+          "name": "Perplexity account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {
+          "timezone": "Asia/Kolkata"
+        }
+      },
+      "type": "n8n-nodes-base.dateTimeTool",
+      "typeVersion": 2,
+      "position": [
+        -3728,
+        1456
+      ],
+      "id": "23fda414-352c-40aa-bffe-a9432325ee4c",
+      "name": "Date & Time"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-dev",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": ""
+            },
+            {
+              "name": "Accept",
+              "value": "image/png"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "inputs",
+              "value": "=<prompt> Use either this prompt to generate an image OR generate an image based around the provided text content that {{ $('Code - Get Prompt').item.json.body.prompt }} </prompt> "
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1296,
+        640
+      ],
+      "id": "8382d04e-50f0-4e1b-ab76-113e889f4683",
+      "name": "generate_image2",
+      "alwaysOutputData": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "content": "## Video Rendering & Status Check (Creatomate)\n* **Video Rendering** – Creatomate → Sends the template + modifications to Creatomate API to generate the final video. \n* Update the API key and template_id as needed. Configure output settings (resolution, frame rate, scale).\n* **Wait** – 60 secs → Pauses the workflow to allow rendering to complete. Adjust wait time based on video length.\n* **Get Video Status** → Checks the rendering status using the video’s render ID.",
+        "height": 288,
+        "width": 624,
+        "color": 2
+      },
+      "id": "bb42a421-bd24-4b7c-bb6e-4718a02dc011",
+      "name": "Sticky Note11",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1424,
+        704
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Create Image From Prompt",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Create Image From Prompt": {
+      "main": [
+        [
+          {
+            "node": "Code - Clean Json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Set Filename": {
+      "main": [
+        [
+          {
+            "node": "Image Create Request - Pollination AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Get Prompt": {
+      "main": [
+        [
+          {
+            "node": "Code - Set Filename",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Clean Json": {
+      "main": [
+        [
+          {
+            "node": "Code - Get Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Preparing for Creatomate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Setting Values for Image Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Content Brain",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Content Brain": {
+      "main": [
+        [
+          {
+            "node": "Create Record in Video Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Stop and Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait - 60 secs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setting Values for Image Model": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Create Image From Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image Create Request - Pollination AI": {
+      "main": [
+        [
+          {
+            "node": "Converting Image file for Storing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Converting Image file for Storing": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparing for Creatomate": {
+      "main": [
+        [
+          {
+            "node": "Template for Creatomate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Template for Creatomate": {
+      "main": [
+        [
+          {
+            "node": "Video Rendering -  Creatomate1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait - 60 secs": {
+      "main": [
+        [
+          {
+            "node": "Get Video Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Video Title and Description": {
+      "main": [
+        [
+          {
+            "node": "Clean - Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean - Details": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merging Complete Video Details": {
+      "main": [
+        [
+          {
+            "node": "Get complete Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Video Status": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get complete Video": {
+      "main": [
+        [
+          {
+            "node": "Upload on Instagram",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Upload on YouTube",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser3": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Content Brain",
+            "type": "ai_outputParser",
+            "index": 0
+          },
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Merging Complete Video Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        [
+          {
+            "node": "Share file",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Rendering -  Creatomate1": {
+      "main": [
+        [
+          {
+            "node": "Wait - 60 secs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Set Video Title and Description",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model in Perplexity": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "generate_image2": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fc7cdc743ae983cf89125ac2d683e0900541918de0f15e520935891ef1f4d4d6"
+  }
+}
