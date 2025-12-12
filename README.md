@@ -150,7 +150,7 @@ Youtube_Automation_n8n/
 
 ## 📜 License
 
-MIT License © 2025 Your Name or Organization
+MIT License © 2025 ShadabKhanB
 
 ---
 
